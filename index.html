@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cascading Goal Planner Ultimate</title>
+    <title>Planner 8.0: Unified Grid</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 
     <script>
         tailwind.config = {
@@ -18,371 +18,289 @@
             theme: {
                 extend: {
                     fontFamily: { sans: ['Cairo', 'sans-serif'] },
-                    colors: { darkPaper: '#1f2937', darkBg: '#111827' }
+                    colors: { 
+                        darkPaper: '#1e293b', 
+                        darkBg: '#0f172a',
+                        brand: '#2563eb'
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+                    }
                 }
             }
         }
     </script>
 
     <style>
-        body { transition: background-color 0.3s ease, color 0.3s ease; }
-        .separator-line { background-size: 2px 10px; background-repeat: repeat-y; width: 2px; }
-        html:not(.dark) .separator-line { background-image: linear-gradient(to bottom, black 50%, transparent 50%); opacity: 0.3; }
-        html.dark .separator-line { background-image: linear-gradient(to bottom, rgba(255,255,255,0.3) 50%, transparent 50%); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+        body { transition: background-color 0.4s ease; }
         
-        /* Tags */
-        .tag-red { background-color: #fee2e2; border-color: #fca5a5; color: #991b1b; }
-        html.dark .tag-red { background-color: #7f1d1d; border-color: #991b1b; color: #fecaca; }
-        .tag-blue { background-color: #dbeafe; border-color: #93c5fd; color: #1e40af; }
-        html.dark .tag-blue { background-color: #1e3a8a; border-color: #1e40af; color: #bfdbfe; }
-        .tag-green { background-color: #dcfce7; border-color: #86efac; color: #166534; }
-        html.dark .tag-green { background-color: #14532d; border-color: #166534; color: #bbf7d0; }
-        .tag-yellow { background-color: #fef9c3; border-color: #fde047; color: #854d0e; }
-        html.dark .tag-yellow { background-color: #713f12; border-color: #854d0e; color: #fef08a; }
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .dark .custom-scroll::-webkit-scrollbar-thumb { background-color: #475569; }
+
+        /* Glass Header */
+        .glass-header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .dark .glass-header {
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
     </style>
 </head>
-<body class="bg-[#f3f4f6] dark:bg-darkBg text-gray-900 dark:text-gray-100 min-h-screen flex flex-col items-center py-8 px-4 font-sans">
+<body class="bg-gray-50 dark:bg-darkBg text-slate-800 dark:text-slate-200 min-h-screen font-sans selection:bg-brand selection:text-white">
 
-    <div id="root" class="w-full"></div>
+    <div id="root" class="w-full h-full flex flex-col"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useMemo } = React;
         const { createRoot } = ReactDOM;
 
         // --- Icons ---
         const Icons = {
-            Plus: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
-            Trash: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
+            Plus: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
+            Trash: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>,
             Check: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>,
-            ChevronLeft: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>,
-            ChevronRight: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>,
             Sun: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>,
             Moon: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>,
             Layout: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
             History: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>,
-            Award: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>,
-            Trophy: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8m-4-9v9m-4.8-9a3 3 0 1 0 0-6 3 3 0 0 0 0 6h9.6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path></svg>
+            Award: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
         };
 
         const generateId = () => Math.random().toString(36).substr(2, 9);
         const getToday = () => new Date().toISOString().split('T')[0];
 
-        // --- View Components ---
+        // --- Config ---
+        const COLUMN_CONFIG = {
+            yearly: { title: "أهداف السنة", sub: "Vision", color: "bg-purple-600", text: "text-purple-600" },
+            halfYearly: { title: "نصف سنوية", sub: "Mission", color: "bg-indigo-600", text: "text-indigo-600" },
+            quarterly: { title: "أهداف الربع", sub: "Quarter", color: "bg-blue-600", text: "text-blue-600" },
+            monthly: { title: "أهداف الشهر", sub: "Month", color: "bg-teal-600", text: "text-teal-600" },
+            weekly: { title: "أهداف الأسبوع", sub: "Week", color: "bg-emerald-600", text: "text-emerald-600" },
+            todo: { title: "مهام اليوم", sub: "Focus", color: "bg-slate-800", text: "text-slate-800" },
+        };
 
-        // 1. Planner View (Original)
+        // --- Components ---
+
         const PlannerView = ({ data, actions, dragHandlers }) => {
             return (
-                <div className="flex flex-col md:grid md:grid-cols-[2fr_1fr_2fr_1fr_2fr_1fr_2fr] gap-4 md:gap-0 h-full min-h-[600px]">
-                    <Column title="أهداف ربع السنة" subtitle="Quarterly" items={data.quarterly} type="quarterly" {...actions} {...dragHandlers} />
-                    <div className="hidden md:block"><Separator /></div>
-                    
-                    <Column title="أهداف الشهر" subtitle="Monthly" items={data.monthly} type="monthly" {...actions} {...dragHandlers} />
-                    <div className="hidden md:block"><Separator /></div>
-                    
-                    <Column title="أهداف الأسبوع" subtitle="Weekly" items={data.weekly} type="weekly" {...actions} {...dragHandlers} />
-                    <div className="hidden md:block"><Separator /></div>
-                    
-                    <Column title="مهام اليوم" subtitle="To-Do List" items={data.todo} type="todo" {...actions} {...dragHandlers} />
+                // Changed from flex/horizontal to GRID with 2 columns on ALL screens
+                <div className="w-full h-full overflow-y-auto custom-scroll p-4 md:p-8 pb-24">
+                    <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-6xl mx-auto">
+                        {Object.keys(COLUMN_CONFIG).map((key) => (
+                            <Column 
+                                key={key}
+                                config={COLUMN_CONFIG[key]} 
+                                items={data[key]} 
+                                type={key} 
+                                {...actions} 
+                                {...dragHandlers} 
+                            />
+                        ))}
+                    </div>
                 </div>
             );
         };
 
-        // 2. History View (New)
+        const Column = ({ config, items, type, onAdd, onUpdate, onDelete, onToggleCheck, onDragStart, onDrop }) => {
+            const [val, setVal] = useState("");
+            const completed = items.filter(i => i.checked).length;
+            const progress = items.length ? Math.round((completed / items.length) * 100) : 0;
+
+            return (
+                <div 
+                    // Fixed height on Desktop to look consistent, auto on mobile if needed or fixed too
+                    className="w-full h-[400px] md:h-[480px] flex flex-col bg-white dark:bg-darkPaper rounded-2xl shadow-soft border border-gray-100 dark:border-gray-700 overflow-hidden"
+                    onDragOver={e => e.preventDefault()} 
+                    onDrop={e => onDrop(e, type)}
+                >
+                    {/* Header */}
+                    <div className="p-3 md:p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-slate-800/50">
+                        <div className="flex justify-between items-start mb-2">
+                            <div>
+                                <h2 className="text-sm md:text-lg font-bold text-slate-800 dark:text-white truncate">{config.title}</h2>
+                                <p className={`text-[10px] md:text-xs font-bold uppercase tracking-wider ${config.text} opacity-80`}>{config.sub}</p>
+                            </div>
+                            <span className="text-[10px] md:text-xs font-semibold bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 px-2 py-0.5 rounded text-slate-500 dark:text-slate-300">
+                                {items.length}
+                            </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div className={`h-full transition-all duration-700 ${config.color}`} style={{width: `${progress}%`}}></div>
+                        </div>
+                    </div>
+                    
+                    {/* List Area */}
+                    <div className="flex-1 overflow-y-auto custom-scroll p-3 space-y-2 bg-gray-50/30 dark:bg-transparent">
+                        {items.map(item => (
+                            <Card key={item.id} item={item} type={type} config={config} onUpdate={(u)=>onUpdate(type, item.id, u)} onDelete={()=>onDelete(type, item.id)} onToggleCheck={()=>onToggleCheck(type, item.id)} onDragStart={onDragStart} />
+                        ))}
+                        {items.length === 0 && (
+                            <div className="h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-700 opacity-40">
+                                <span className="text-3xl font-light mb-1">+</span>
+                                <span className="text-xs">فارغ</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Add Form */}
+                    <form onSubmit={e => { e.preventDefault(); onAdd(type, val); setVal(""); }} className="p-3 border-t border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-slate-800 rounded-xl px-3 py-2 transition-all focus-within:ring-1 ring-brand/50">
+                            <input value={val} onChange={e => setVal(e.target.value)} placeholder="إضافة..." className="flex-1 bg-transparent border-none text-xs md:text-sm outline-none dark:text-white min-w-0" />
+                            <button className={`p-1.5 rounded-lg text-white shadow-sm ${config.color} hover:opacity-90`}><Icons.Plus width={14} /></button>
+                        </div>
+                    </form>
+                </div>
+            );
+        };
+
+        const Card = ({ item, type, config, onUpdate, onDelete, onToggleCheck, onDragStart }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [localText, setLocalText] = useState(item.text);
+            const save = () => { setIsEditing(false); onUpdate({ text: localText }); };
+
+            return (
+                <div draggable onDragStart={e => onDragStart(e, item)} className={`group relative bg-white dark:bg-slate-800 p-3 rounded-xl border transition-all ${item.checked ? 'border-transparent bg-gray-50/80 dark:bg-slate-800/50 opacity-60' : 'border-gray-100 dark:border-slate-700 shadow-sm hover:border-gray-300 dark:hover:border-slate-500'}`}>
+                    <div className="flex gap-2 items-start">
+                        <div onClick={onToggleCheck} className={`w-4 h-4 mt-0.5 rounded border flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors ${item.checked ? `${config.color} border-transparent text-white` : 'border-gray-300 dark:border-slate-500 hover:border-brand'}`}>
+                            {item.checked && <Icons.Check width={10} strokeWidth={4} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            {isEditing ? 
+                                <input value={localText} onChange={e => setLocalText(e.target.value)} onBlur={save} onKeyDown={e => e.key==='Enter' && save()} autoFocus className="w-full bg-transparent border-b border-brand outline-none text-xs pb-1" /> :
+                                <p onClick={() => setIsEditing(true)} className={`text-xs md:text-sm font-medium leading-relaxed cursor-text break-words ${item.checked ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{item.text}</p>
+                            }
+                        </div>
+                    </div>
+                    <button onClick={onDelete} className="absolute top-1 left-1 p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Icons.Trash width={12} /></button>
+                </div>
+            );
+        };
+
         const HistoryView = ({ data }) => {
-            // Aggregate all completed tasks from all columns
             const history = useMemo(() => {
-                const allItems = [...data.quarterly, ...data.monthly, ...data.weekly, ...data.todo];
-                const completed = allItems.filter(i => i.checked && i.completedAt);
-                
-                // Group by Date
-                const grouped = completed.reduce((acc, item) => {
-                    const date = item.completedAt;
-                    if (!acc[date]) acc[date] = [];
-                    acc[date].push(item);
+                const grouped = Object.values(data).flat().filter(i => i.checked && i.completedAt).reduce((acc, item) => {
+                    (acc[item.completedAt] = acc[item.completedAt] || []).push(item);
                     return acc;
                 }, {});
-
-                // Sort dates descending (newest first)
                 return Object.entries(grouped).sort((a, b) => new Date(b[0]) - new Date(a[0]));
             }, [data]);
-
-            if (history.length === 0) {
-                return (
-                    <div className="flex flex-col items-center justify-center h-96 text-gray-400">
-                        <Icons.History width={64} height={64} className="mb-4 opacity-50"/>
-                        <p className="text-lg">لم يتم تسجيل أي مهام مكتملة بعد.</p>
-                        <p className="text-sm">قم بإنهاء المهام لتبدأ رحلة الأرشيف!</p>
-                    </div>
-                );
-            }
-
+            
             return (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
-                    {history.map(([date, items]) => (
-                        <div key={date} className="bg-white dark:bg-darkPaper rounded-xl shadow-sm border-2 border-gray-200 dark:border-gray-700 p-5 hover:border-black dark:hover:border-white transition-all">
-                            <div className="flex justify-between items-center mb-4 border-b dark:border-gray-600 pb-2">
-                                <h3 className="font-bold text-lg">{date}</h3>
-                                <span className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 text-xs px-2 py-1 rounded-full font-bold">
-                                    {items.length} منجزات
-                                </span>
+                <div className="p-6 overflow-y-auto custom-scroll h-full w-full">
+                    {history.length === 0 ? <div className="text-center text-gray-400 mt-20 flex flex-col items-center"><Icons.History width={48} className="opacity-20 mb-4"/>السجل فارغ</div> : 
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
+                        {history.map(([date, items]) => (
+                            <div key={date} className="bg-white dark:bg-darkPaper p-5 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm">
+                                <h3 className="font-bold mb-3 flex justify-between items-center text-slate-700 dark:text-white">{date} <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">{items.length}</span></h3>
+                                <ul className="text-sm space-y-2">{items.map(i => <li key={i.id} className="truncate line-through opacity-60 flex items-center gap-2"><span className="text-emerald-500">✓</span> {i.text}</li>)}</ul>
                             </div>
-                            <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll">
-                                {items.map(item => (
-                                    <div key={item.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                                        <span className="truncate">{item.text}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>}
                 </div>
             );
         };
 
-        // 3. Top 10 View (New)
         const StatsView = ({ data }) => {
             const topDays = useMemo(() => {
-                const allItems = [...data.quarterly, ...data.monthly, ...data.weekly, ...data.todo];
-                const completed = allItems.filter(i => i.checked && i.completedAt);
-                
-                const grouped = completed.reduce((acc, item) => {
-                    const date = item.completedAt;
-                    acc[date] = (acc[date] || 0) + 1;
+                const grouped = Object.values(data).flat().filter(i => i.checked && i.completedAt).reduce((acc, item) => {
+                    acc[item.completedAt] = (acc[item.completedAt] || 0) + 1;
                     return acc;
                 }, {});
-
-                return Object.entries(grouped)
-                    .sort((a, b) => b[1] - a[1]) // Sort by count descending
-                    .slice(0, 10); // Take top 10
+                return Object.entries(grouped).sort((a, b) => b[1] - a[1]).slice(0, 10);
             }, [data]);
 
-            if (topDays.length === 0) return <div className="text-center p-10 text-gray-500">لا توجد بيانات كافية للإحصائيات.</div>;
-
             return (
-                <div className="max-w-2xl mx-auto p-4">
-                    <div className="bg-white dark:bg-darkPaper rounded-2xl shadow-lg border-2 border-black dark:border-gray-600 overflow-hidden">
-                        <div className="bg-black dark:bg-gray-800 text-white p-6 text-center">
-                            <Icons.Trophy width={48} height={48} className="mx-auto mb-2 text-yellow-400" />
-                            <h2 className="text-2xl font-bold">أفضل 10 أيام إنتاجية</h2>
-                            <p className="opacity-80 text-sm mt-1">الأيام التي حققت فيها أكبر عدد من المهام</p>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            {topDays.map(([date, count], index) => {
-                                let rankClass = "bg-gray-100 dark:bg-gray-700";
-                                let icon = null;
-                                if(index === 0) { rankClass = "bg-yellow-100 dark:bg-yellow-900 border-yellow-400"; icon = "🥇"; }
-                                else if(index === 1) { rankClass = "bg-gray-200 dark:bg-gray-600 border-gray-400"; icon = "🥈"; }
-                                else if(index === 2) { rankClass = "bg-orange-100 dark:bg-orange-900 border-orange-400"; icon = "🥉"; }
-
-                                return (
-                                    <div key={date} className={`flex items-center justify-between p-4 rounded-xl border-2 border-transparent transition-transform hover:scale-[1.02] ${rankClass}`}>
-                                        <div className="flex items-center gap-4">
-                                            <span className="font-bold text-xl w-8 text-center">{icon || `#${index + 1}`}</span>
-                                            <div>
-                                                <div className="font-bold text-lg">{date}</div>
-                                                <div className="text-xs text-gray-500 dark:text-gray-400">تاريخ مميز</div>
-                                            </div>
-                                        </div>
-                                        <div className="text-2xl font-black">{count} <span className="text-xs font-normal text-gray-500">مهمة</span></div>
+                <div className="p-6 overflow-y-auto custom-scroll h-full flex flex-col items-center">
+                    <div className="w-full max-w-xl bg-white dark:bg-darkPaper rounded-3xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden">
+                        <div className="bg-slate-900 text-white p-8 text-center"><h2 className="text-2xl font-bold mb-1">🏆 لوحة الشرف</h2><p className="text-slate-400 text-sm">أكثر الأيام إنتاجية</p></div>
+                        <div className="p-6 space-y-3">
+                            {topDays.map(([date, count], idx) => (
+                                <div key={date} className="flex justify-between items-center p-4 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700">
+                                    <div className="flex items-center gap-4">
+                                        <span className={`font-bold w-8 h-8 flex items-center justify-center rounded-full ${idx===0?'bg-yellow-400 text-black':idx===1?'bg-slate-300 text-black':idx===2?'bg-orange-300 text-black':'bg-white dark:bg-slate-700'}`}>{idx+1}</span> 
+                                        <span className="font-semibold text-slate-700 dark:text-white">{date}</span>
                                     </div>
-                                )
-                            })}
+                                    <span className="font-bold text-lg text-slate-800 dark:text-white">{count}</span>
+                                </div>
+                            ))}
+                            {topDays.length === 0 && <p className="text-center text-gray-400 py-10">لا توجد بيانات كافية</p>}
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // --- Main App ---
         const App = () => {
-            // View State: 'planner', 'history', 'stats'
-            const [currentView, setCurrentView] = useState('planner');
-            
-            const [data, setData] = useState({
-                quarterly: [], monthly: [], weekly: [], todo: []
-            });
+            const [view, setView] = useState('planner');
+            const [data, setData] = useState({ yearly: [], halfYearly: [], quarterly: [], monthly: [], weekly: [], todo: [] });
             const [isDark, setIsDark] = useState(false);
-            const [draggedItem, setDraggedItem] = useState(null);
+            const [dragged, setDragged] = useState(null);
 
-            // Load Data
             useEffect(() => {
-                const savedData = localStorage.getItem('plannerData_v4');
-                if (savedData) try { setData(JSON.parse(savedData)); } catch(e) {}
-                const savedTheme = localStorage.getItem('plannerTheme');
-                if (savedTheme === 'dark') { setIsDark(true); document.documentElement.classList.add('dark'); }
+                const saved = localStorage.getItem('plannerData_v8');
+                if (saved) try { setData(JSON.parse(saved)); } catch(e) {}
+                const theme = localStorage.getItem('theme');
+                if (theme === 'dark') { setIsDark(true); document.documentElement.classList.add('dark'); }
             }, []);
+            useEffect(() => localStorage.setItem('plannerData_v8', JSON.stringify(data)), [data]);
 
-            // Save Data
-            useEffect(() => { localStorage.setItem('plannerData_v4', JSON.stringify(data)); }, [data]);
-
-            // Handlers
-            const toggleTheme = () => {
-                const newTheme = !isDark;
-                setIsDark(newTheme);
-                if (newTheme) { document.documentElement.classList.add('dark'); localStorage.setItem('plannerTheme', 'dark'); }
-                else { document.documentElement.classList.remove('dark'); localStorage.setItem('plannerTheme', 'light'); }
-            };
-
-            const triggerConfetti = () => confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-
-            const addItem = (col, text) => {
-                if (!text.trim()) return;
-                setData(prev => ({ ...prev, [col]: [...prev[col], { id: generateId(), text, checked: false, completedAt: null }] }));
-            };
-
-            const updateItem = (col, id, updates) => {
-                setData(prev => ({ ...prev, [col]: prev[col].map(i => i.id === id ? { ...i, ...updates } : i) }));
-            };
-
-            const deleteItem = (col, id) => {
-                setData(prev => ({ ...prev, [col]: prev[col].filter(i => i.id !== id) }));
-            };
-
-            // NEW: Save Date when checking
+            const toggleTheme = () => { setIsDark(!isDark); document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', !isDark ? 'dark' : 'light'); };
+            const addItem = (col, text) => { if (!text.trim()) return; setData(p => ({ ...p, [col]: [...p[col], { id: generateId(), text, checked: false, completedAt: null }] })); };
+            const updateItem = (col, id, up) => setData(p => ({ ...p, [col]: p[col].map(i => i.id === id ? { ...i, ...up } : i) }));
+            const deleteItem = (col, id) => setData(p => ({ ...p, [col]: p[col].filter(i => i.id !== id) }));
             const toggleCheck = (col, id) => {
-                setData(prev => {
-                    const newData = { ...prev };
+                setData(p => {
+                    const newData = { ...p };
                     newData[col] = newData[col].map(i => {
                         if (i.id === id) {
-                            const newChecked = !i.checked;
-                            if (newChecked && col === 'todo') triggerConfetti();
-                            return { 
-                                ...i, 
-                                checked: newChecked,
-                                // Save date if checked, remove if unchecked
-                                completedAt: newChecked ? getToday() : null 
-                            };
+                            const isChecked = !i.checked;
+                            if (isChecked && col === 'todo') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                            return { ...i, checked: isChecked, completedAt: isChecked ? getToday() : null };
                         }
                         return i;
                     });
                     return newData;
                 });
             };
-
-            // Drag Handlers
-            const handleDragStart = (e, item) => { setDraggedItem(item); e.dataTransfer.effectAllowed = "copy"; };
-            const handleDrop = (e, targetCol) => {
-                e.preventDefault();
-                if (!draggedItem) return;
-                const newItem = { ...draggedItem, id: generateId(), text: draggedItem.text + " (تفصيل)", checked: false, completedAt: null };
-                setData(prev => ({ ...prev, [targetCol]: [...prev[targetCol], newItem] }));
-                setDraggedItem(null);
+            const dragHandlers = {
+                onDragStart: (e, item) => { setDragged(item); e.dataTransfer.effectAllowed = "copy"; },
+                onDrop: (e, targetCol) => {
+                    e.preventDefault();
+                    if (!dragged) return;
+                    const newItem = { ...dragged, id: generateId(), text: dragged.text + " (تفصيل)", checked: false, completedAt: null };
+                    setData(p => ({ ...p, [targetCol]: [...p[targetCol], newItem] }));
+                    setDragged(null);
+                }
             };
 
             return (
-                <div className="w-full max-w-[1700px] mx-auto h-full flex flex-col">
-                    {/* Header & Nav */}
-                    <header className="mb-6 border-b-2 border-black dark:border-gray-600 pb-4">
-                        <div className="flex flex-wrap justify-between items-center gap-4">
-                            <h1 className="text-2xl md:text-3xl font-bold">Cascading Goal Planner <span className="text-xs bg-black text-white px-2 py-0.5 rounded">V4</span></h1>
-                            
-                            {/* Navigation Tabs */}
-                            <div className="flex bg-white dark:bg-darkPaper p-1 rounded-lg border border-gray-300 dark:border-gray-600">
-                                {[
-                                    { id: 'planner', icon: Icons.Layout, label: 'المخطط' },
-                                    { id: 'history', icon: Icons.History, label: 'السجل' },
-                                    { id: 'stats', icon: Icons.Award, label: 'الإحصائيات' }
-                                ].map(tab => (
-                                    <button 
-                                        key={tab.id}
-                                        onClick={() => setCurrentView(tab.id)}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-bold
-                                        ${currentView === tab.id 
-                                            ? 'bg-black text-white dark:bg-white dark:text-black shadow-md' 
-                                            : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                                    >
-                                        <tab.icon width={16} height={16} />
-                                        <span className="hidden md:inline">{tab.label}</span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            <button onClick={toggleTheme} className="p-2 rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                {isDark ? <Icons.Sun width={20} /> : <Icons.Moon width={20} />}
-                            </button>
+                <>
+                    <header className="glass-header z-50 px-6 py-3 flex justify-between items-center sticky top-0 shadow-sm">
+                        <div className="flex items-center gap-2">
+                            <div className="bg-brand text-white p-1.5 rounded-lg"><Icons.Layout width={18} /></div>
+                            <h1 className="text-lg font-bold text-slate-800 dark:text-white hidden md:block">Grid Planner</h1>
                         </div>
+                        <div className="flex bg-gray-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
+                            {[{id:'planner',i:Icons.Layout,l:'مخطط'},{id:'history',i:Icons.History,l:'سجل'},{id:'stats',i:Icons.Award,l:'إحصاء'}].map(t => (
+                                <button key={t.id} onClick={()=>setView(t.id)} className={`flex items-center gap-1 px-4 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${view===t.id ? 'bg-white dark:bg-slate-600 text-brand dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                                    <t.i width={16} /> <span className="hidden md:inline">{t.l}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <button onClick={toggleTheme} className="p-2 rounded-xl bg-gray-50 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-slate-600 dark:text-white transition-colors">{isDark ? <Icons.Sun width={18}/> : <Icons.Moon width={18}/>}</button>
                     </header>
-
-                    {/* Content Views */}
-                    <main className="flex-1">
-                        {currentView === 'planner' && (
-                            <PlannerView 
-                                data={data} 
-                                actions={{ onAdd: addItem, onUpdate: updateItem, onDelete: deleteItem, onToggleCheck: toggleCheck }}
-                                dragHandlers={{ onDragStart: handleDragStart, onDrop: handleDrop }}
-                            />
-                        )}
-                        {currentView === 'history' && <HistoryView data={data} />}
-                        {currentView === 'stats' && <StatsView data={data} />}
+                    <main className="flex-1 w-full overflow-hidden relative">
+                        {view === 'planner' && <PlannerView data={data} actions={{onAdd:addItem, onUpdate:updateItem, onDelete:deleteItem, onToggleCheck:toggleCheck}} dragHandlers={dragHandlers} />}
+                        {view === 'history' && <HistoryView data={data} />}
+                        {view === 'stats' && <StatsView data={data} />}
                     </main>
-                </div>
-            );
-        };
-
-        // --- Shared Components for Planner ---
-        
-        const Separator = () => (
-            <div className="relative flex flex-col items-center justify-between h-full py-8 select-none opacity-50">
-                <div className="absolute top-8 bottom-8 separator-line z-0"></div>
-                <div className="relative z-10 bg-white dark:bg-darkPaper border border-gray-400 p-1 rounded"><Icons.ChevronLeft width={12} /></div>
-                <div className="relative z-10 bg-white dark:bg-darkPaper border border-gray-400 p-1 rounded"><Icons.ChevronRight width={12} /></div>
-            </div>
-        );
-
-        const Column = ({ title, subtitle, items, type, onAdd, onUpdate, onDelete, onToggleCheck, onDragStart, onDrop }) => {
-            const [val, setVal] = useState("");
-            // Simple Progress Bar
-            const completed = items.filter(i => i.checked).length;
-            const progress = items.length ? Math.round((completed / items.length) * 100) : 0;
-
-            return (
-                <div className="flex flex-col h-full border-r border-gray-200 dark:border-gray-700 px-2" onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, type)}>
-                    <div className="mb-3">
-                        <div className="flex justify-between">
-                            <h2 className="text-xl font-bold">{title}</h2>
-                            <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{items.length}</span>
-                        </div>
-                        <div className="h-1 w-full bg-gray-200 dark:bg-gray-700 mt-2 rounded-full overflow-hidden">
-                            <div className={`h-full transition-all duration-500 ${progress === 100 ? 'bg-green-500' : 'bg-blue-600'}`} style={{width: `${progress}%`}}></div>
-                        </div>
-                    </div>
-                    
-                    <div className="flex-1 overflow-y-auto custom-scroll space-y-2 pb-4">
-                        {items.map(item => (
-                            <Card key={item.id} item={item} type={type} onUpdate={(u) => onUpdate(type, item.id, u)} onDelete={() => onDelete(type, item.id)} onToggleCheck={() => onToggleCheck(type, item.id)} onDragStart={onDragStart} />
-                        ))}
-                    </div>
-
-                    <form onSubmit={e => { e.preventDefault(); onAdd(type, val); setVal(""); }} className="mt-2 flex gap-2">
-                        <input value={val} onChange={e => setVal(e.target.value)} placeholder="إضافة..." className="flex-1 bg-transparent border-b-2 border-gray-300 focus:border-black dark:focus:border-white outline-none p-1" />
-                        <button className="text-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 px-2 rounded">+</button>
-                    </form>
-                </div>
-            );
-        };
-
-        const Card = ({ item, type, onUpdate, onDelete, onToggleCheck, onDragStart }) => {
-            const [isEditing, setIsEditing] = useState(false);
-            const [localText, setLocalText] = useState(item.text);
-            const save = () => { setIsEditing(false); onUpdate({ text: localText }); };
-
-            return (
-                <div draggable onDragStart={e => onDragStart(e, item)} className={`group relative bg-white dark:bg-darkPaper border p-3 rounded-lg flex gap-3 transition-all ${item.checked ? 'opacity-50 border-gray-200' : 'border-gray-300 hover:border-black dark:border-gray-600 dark:hover:border-white shadow-sm'}`}>
-                    <div onClick={onToggleCheck} className={`w-5 h-5 flex-shrink-0 border-2 rounded cursor-pointer flex items-center justify-center ${item.checked ? 'bg-black dark:bg-green-600 border-black dark:border-green-600' : 'border-gray-400'}`}>
-                        {item.checked && <Icons.Check width={12} className="text-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        {isEditing ? 
-                            <input value={localText} onChange={e => setLocalText(e.target.value)} onBlur={save} onKeyDown={e => e.key==='Enter' && save()} autoFocus className="w-full bg-transparent border-b border-black outline-none" /> :
-                            <p onClick={() => setIsEditing(true)} className={`text-sm cursor-text break-words ${item.checked ? 'line-through' : ''}`}>{item.text}</p>
-                        }
-                        {/* Show Date if Checked */}
-                        {item.checked && item.completedAt && <div className="text-[10px] text-gray-400 mt-1">تم: {item.completedAt}</div>}
-                    </div>
-                    <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500"><Icons.Trash width={14} /></button>
-                </div>
+                </>
             );
         };
 
